@@ -1,3 +1,9 @@
 Simple utility for simple metrics on personal Twitter usage.
 
 Currently supports calculating ratio of original vs. reweeted content.
+
+Usage:
+
+> twitterstats:print_stats("igb").
+
+Out of @igb's last 1130 tweets 956 are original content and 174 are 'retweets'. That means @igb publishes 84% original content.
