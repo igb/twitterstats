@@ -1,0 +1,3 @@
+Simple utility for simple metrics on personal Twitter usage.
+
+Currently supports calculating ratio of original vs. reweeted content.
