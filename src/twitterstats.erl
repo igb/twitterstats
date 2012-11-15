@@ -4,19 +4,13 @@
 
 print_stats(User)->
      {TotalTweetCount, OriginalTweetCount, RetweetCount}=get_stats(User),
-     _=io:fwrite("Out of your last ~p tweets ~p are original content and ~p are 'retweets'. That means you are ~p% original.", [TotalTweetCount, OriginalTweetCount, RetweetCount, trunc((OriginalTweetCount/TotalTweetCount) * 100)]),
-    "".
+     io:format("Out of your last ~p tweets ~p are original content and ~p are 'retweets'. That means you are ~p% original.~n", [TotalTweetCount, OriginalTweetCount, RetweetCount, trunc((OriginalTweetCount/TotalTweetCount) * 100)]).
 
 get_stats(User)->
     [application:start(X) || X <- [inets, public_key,crypto, ssl]],
-    {ok, {StatusLine, Headers, Body}}=httpc:request(get, {lists:flatten(["https://api.twitter.com/1/statuses/user_timeline.json?include_entities=true&include_rts=true&screen_name=",User]), []}, [],[]),
-    case StatusLine of
-	{"HTTP/1.1",200,"OK"} -> 
-	    Tweets=re:split(Body, "},{\"created"), Data=[string:str(binary_to_list(X), "retweeted_status") || X <- Tweets],LastTweetId=get_last_tweet_id(Tweets),TotalData=get_next_tweets(User, LastTweetId, Data), {OriginalTweetCount, RetweetCount}=count(TotalData),
-    {length(TotalData), OriginalTweetCount, RetweetCount};
-	_->
-	    {err, StatusLine}
-    end.
+    Data=get_next_tweets(User, 0, []),
+    {OriginalTweetCount, RetweetCount}=count(Data),
+    {length(Data), OriginalTweetCount, RetweetCount}.
     
 
 count(TotalData)->
@@ -27,7 +21,8 @@ count(TotalData)->
 get_tweets(User, MaxId)->
     RequestUrl=append_max_id(lists:flatten(["https://api.twitter.com/1/statuses/user_timeline.json?include_entities=true&include_rts=true&screen_name=",User]), MaxId),    
     {ok, {StatusLine, Headers, Body}}=httpc:request(get, {RequestUrl, []}, [],[]),
-    
+
+%    io:fwrite("Headers:~n~p~n", [Headers]),
 
     case StatusLine of
 	{"HTTP/1.1",200,"OK"} ->
@@ -39,11 +34,10 @@ get_tweets(User, MaxId)->
 	     StatusLine
      end.
 
-append_max_id(RequestUrl, MaxId)->
-    case MaxId of
-	nil->RequestUrl;
-	_ -> lists:flatten([RequestUrl, "&max_id=", integer_to_list(MaxId)])
-    end.
+append_max_id(RequestUrl, MaxId) when MaxId > 0 ->
+       lists:flatten([RequestUrl, "&max_id=", integer_to_list(MaxId)]);    
+append_max_id(RequestUrl, _)->
+    RequestUrl.
 
 get_next_tweets(User,LastTweetId, Data)->
     Tweets=get_tweets(User, LastTweetId - 1),
