@@ -1,0 +1,15 @@
+{application, twitterstats,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+		  inets,
+		  public_key,
+		  crypto
+                 ]},
+  {mod, { twitterstats_app, []}},
+  {env, []}
+ ]}.

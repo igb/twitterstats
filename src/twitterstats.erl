@@ -2,6 +2,11 @@
 -export([get_stats/1, print_stats/1]).
 
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+
 print_stats(User)->
      {TotalTweetCount, OriginalTweetCount, RetweetCount}=get_stats(User),
      io:format("Out of @~s's last ~p tweets ~p are original content and ~p are 'retweets'. That means @~s publishes ~p% original content.~n", [User, TotalTweetCount, OriginalTweetCount, RetweetCount, User, trunc((OriginalTweetCount/TotalTweetCount) * 100)]).
@@ -22,7 +27,7 @@ get_tweets(User, MaxId)->
     RequestUrl=append_max_id(lists:flatten(["https://api.twitter.com/1/statuses/user_timeline.json?include_entities=true&include_rts=true&screen_name=",User]), MaxId),    
     {ok, {StatusLine, Headers, Body}}=httpc:request(get, {RequestUrl, []}, [],[]),
 
-%    io:fwrite("Headers:~n~p~n", [Headers]),
+    io:fwrite("Headers:~n~p~n", [Headers]),
 
     case StatusLine of
 	{"HTTP/1.1",200,"OK"} ->
@@ -33,6 +38,12 @@ get_tweets(User, MaxId)->
 	 {err, StatusLine} ->
 	     StatusLine
      end.
+
+process_tweet(Tweet)->
+    TweetStr=binary_to_list(Tweet),
+    IsRetweet=string:str(TweetStr, "retweeted_status").
+    
+
 
 append_max_id(RequestUrl, MaxId) when MaxId > 0 ->
        lists:flatten([RequestUrl, "&max_id=", integer_to_list(MaxId)]);    
@@ -66,3 +77,6 @@ get_tweet_id(Tweet)->
     Id.
 
     
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
