@@ -4,7 +4,7 @@
 
 print_stats(User)->
      {TotalTweetCount, OriginalTweetCount, RetweetCount}=get_stats(User),
-     io:format("Out of your last ~p tweets ~p are original content and ~p are 'retweets'. That means you are ~p% original.~n", [TotalTweetCount, OriginalTweetCount, RetweetCount, trunc((OriginalTweetCount/TotalTweetCount) * 100)]).
+     io:format("Out of @~s's last ~p tweets ~p are original content and ~p are 'retweets'. That means @~s publishes ~p% original content.~n", [User, TotalTweetCount, OriginalTweetCount, RetweetCount, User, trunc((OriginalTweetCount/TotalTweetCount) * 100)]).
 
 get_stats(User)->
     [application:start(X) || X <- [inets, public_key,crypto, ssl]],
