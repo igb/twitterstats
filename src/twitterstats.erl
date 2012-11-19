@@ -1,5 +1,5 @@
 -module(twitterstats).
--export([get_stats/1, print_stats/1]).
+-export([get_stats/1, print_stats/1, levenshtein_distance/2]).
 
 
 -ifdef(TEST).
@@ -81,8 +81,39 @@ extract_chunk(Tweet, ChunkStartToken, ChunkEndToken)->
 
 extract_tweet_body(Tweet)->    
     extract_chunk(Tweet, "\"text\":\"","\",\"source\":\"").
+
+
+levenshtein_distance(Source, Target)->
+    SourceLength=length(Source),
+    TargetLength=length(Target),
+    case SourceLength == TargetLength of
+	false ->
+	    Cost=0;
+	true  ->
+	    Cost=1
+    end,
+
+    case  SourceLength of 
+	0->
+	    TargetLength;
+	_ -> case TargetLength of
+		 0 ->
+		     SourceLength;
+		 _ -> min(levenshtein_distance(lists:sublist(Source, SourceLength - 1), Target) + 1,
+			  min(levenshtein_distance(Source, lists:sublist(Target, TargetLength - 1)) + 1,
+			      levenshtein_distance(lists:sublist(Source, SourceLength - 1), lists:sublist(Target, TargetLength - 1)) + Cost))
+	     end
+    end.
+
+    
+
     
 -ifdef(TEST).
+
+
+-define(LEV_DATA_001, "I crushed a 4.0mi run with a pace of 9'50\" with Nike+ SportWatch GPS. #nikeplus: http://go.nike.com/5g9tf3o").
+
+-define(LEV_DATA_002, "I crushed a 3.9mi run with a pace of 10'11\" with Nike+ SportWatch GPS. #nikeplus: http://go.nike.com/8hq97qa").
 
 -define(TEST_TWEET, "{\"created_at\":\"Tue Nov 13 17:18:14 +0000 2012\",\"id\":268402405782196224,\"id_str\":\"268402405782196224\",\"text\":\"@benj_fry yeah, it's everywhere over here...crazy cognitive dissonance for a westerner.\",\"source\":\"\u003ca href=\\\"http:\/\/twitter.com\/download\/iphone\\\" rel=\\\"nofollow\\\"\u003eTwitter for iPhone\u003c\/a\u003e\",\"truncated\":false,\"in_reply_to_status_id\":268387265447874560,\"in_reply_to_status_id_str\":\"268387265447874560\",\"in_reply_to_user_id\":38293796,\"in_reply_to_user_id_str\":\"38293796\",\"in_reply_to_screen_name\":\"benj_fry\",\"user\":{\"id\":5649,\"id_str\":\"5649\",\"name\":\"Ian Brown\",\"screen_name\":\"igb\",\"location\":\"San Francisco, California\",\"url\":\"http:\/\/www.hccp.org\/\",\"description\":\"Engineering Manager at Salesforce.com\",\"protected\":false,\"followers_count\":106,\"friends_count\":105,\"listed_count\":6,\"created_at\":\"Sat Sep 09 03:38:31 +0000 2006\",\"favourites_count\":22,\"utc_offset\":-28800,\"time_zone\":\"Pacific Time (US & Canada)\",\"geo_enabled\":false,\"verified\":false,\"statuses_count\":1134,\"lang\":\"en\",\"contributors_enabled\":false,\"is_translator\":false,\"profile_background_color\":\"709397\",\"profile_background_image_url\":\"http:\/\/a0.twimg.com\/images\/themes\/theme6\/bg.gif\",\"profile_background_image_url_https\":\"https:\/\/si0.twimg.com\/images\/themes\/theme6\/bg.gif\",\"profile_background_tile\":false,\"profile_image_url\":\"http:\/\/a0.twimg.com\/profile_images\/56604308\/Photo_15_normal.jpg\",\"profile_image_url_https\":\"https:\/\/si0.twimg.com\/profile_images\/56604308\/Photo_15_normal.jpg\",\"profile_link_color\":\"FF3300\",\"profile_sidebar_border_color\":\"86A4A6\",\"profile_sidebar_fill_color\":\"A0C5C7\",\"profile_text_color\":\"333333\",\"profile_use_background_image\":true,\"default_profile\":false,\"default_profile_image\":false,\"following\":null,\"follow_request_sent\":null,\"notifications\":null},\"geo\":null,\"coordinates\":null,\"place\":null,\"contributors\":null,\"retweet_count\":0,\"entities\":{\"hashtags\":[],\"urls\":[],\"user_mentions\":[{\"screen_name\":\"benj_fry\",\"name\":\"Benjamin Fry\",\"id\":38293796,\"id_str\":\"38293796\",\"indices\":[0,9]}]},\"favorited\":false,\"retweeted\":false}\""). 
 
@@ -98,5 +129,11 @@ extract_tweet_test()->
     Expected="@benj_fry yeah, it's everywhere over here...crazy cognitive dissonance for a westerner.",
     Expected=extract_tweet_body(?TEST_TWEET).
 
+levenshtein_distance_test()->
+    Expected=13,
+    levenshtein_distance(?LEV_DATA_001, ?LEV_DATA_002).
+    
 
 -endif.
+
+
