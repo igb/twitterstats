@@ -1,5 +1,6 @@
 -module(twitterstats).
--export([get_stats/1, print_stats/1, levenshtein_distance/2]).
+-export([get_stats/1, print_stats/1, levenshtein_distance/2, get_score/3, update_score/4]).
+
 
 
 -ifdef(TEST).
@@ -82,27 +83,50 @@ extract_chunk(Tweet, ChunkStartToken, ChunkEndToken)->
 extract_tweet_body(Tweet)->    
     extract_chunk(Tweet, "\"text\":\"","\",\"source\":\"").
 
+   
+   
+levenshtein_distance(Source, Target)  ->
 
-levenshtein_distance(Source, Target)->
-    SourceLength=length(Source),
-    TargetLength=length(Target),
-    case SourceLength == TargetLength of
-	false ->
-	    Cost=0;
-	true  ->
-	    Cost=1
+    Score=lists:append([[X || X <- lists:seq(0, length(Target))]],   [lists:append([Y],[n || X <- lists:seq(1, length(Source) - 1)]) || Y <- lists:seq(1, length(Source))]),
+    NewScore=levenshtein_distance_source(Source, Target, Score, 1, 1),
+    get_score(length(Source), length(Target), NewScore).
+
+
+levenshtein_distance_source([H|Source], Target, Score, I, J)->
+    
+    %io:fwrite("~c I:~p~n", [H,I]),
+    NewScore=levenshtein_distance_target(Source, Target, Score, I, J),
+    levenshtein_distance_source(Source, Target, NewScore, I+1, J);
+
+levenshtein_distance_source([],_,Score, I, J) ->
+    Score.
+    
+levenshtein_distance_target(Source, [H|Target], Score, I, J)->    
+    %io:fwrite(" ~c J:~p  ~p  ~p~n", [H,J, Source, Target]),
+    case Source of
+	[]->S='';
+	_-> [S|_]=Source
     end,
+   ScoreValue=min(min(get_score(I - 1, J, Score) + 1, get_score(I, J - 1, Score) + 1), get_score(I - 1, J - 1, Score) + compare(S, H)),
+    NewScore=update_score(I,J, Score,ScoreValue),
+    levenshtein_distance_target(Source, Target, NewScore, I, J + 1);
+levenshtein_distance_target(Source, [], Score, I, J)->
+    Score.
+    
+get_score(I, J, Score)->
+    lists:nth(J+1, lists:nth(I+1, Score)).
 
-    case  SourceLength of 
-	0->
-	    TargetLength;
-	_ -> case TargetLength of
-		 0 ->
-		     SourceLength;
-		 _ -> min(levenshtein_distance(lists:sublist(Source, SourceLength - 1), Target) + 1,
-			  min(levenshtein_distance(Source, lists:sublist(Target, TargetLength - 1)) + 1,
-			      levenshtein_distance(lists:sublist(Source, SourceLength - 1), lists:sublist(Target, TargetLength - 1)) + Cost))
-	     end
+update_score(I, J, Score, Value)->
+    {IFirst, [IMiddle|ILast]}=lists:split(I, Score),
+    {JFirst, [JMiddle|JLast]}=lists:split(J, IMiddle),
+    NewJ=lists:append(JFirst,lists:append([Value], JLast)),
+    lists:append(IFirst,lists:append([NewJ], ILast)).
+    
+compare(X,Y)->
+    case X==Y of
+	true->
+	    0;
+	false -> 1
     end.
 
     
@@ -129,10 +153,41 @@ extract_tweet_test()->
     Expected="@benj_fry yeah, it's everywhere over here...crazy cognitive dissonance for a westerner.",
     Expected=extract_tweet_body(?TEST_TWEET).
 
-levenshtein_distance_test()->
-    Expected=13,
-    levenshtein_distance(?LEV_DATA_001, ?LEV_DATA_002).
+% several of these unit case test examples taken from org.apache.commons.lang.StringUtils
+
+update_score_test()->
+    Score=[["0zero", "0one", "0two", "0three"],
+	   ["1zero","1one", "1two", "1three"],
+	   ["2zero","2one", "2two", "2three"],
+	   ["3zero", "3one", "3two", "3three"]
+	  ],
+    NewScore=update_score(2, 1, Score, "new"),
+    ?assert(get_score(1, 1, NewScore) =:= "1one"), 
+    ?assert(get_score(2, 1, NewScore) =:= "new"). 
     
+get_score_test()->
+    Score=[["0zero", "0one", "0two", "0three"],
+	   ["1zero","1one", "1two", "1three"],
+	   ["2zero","2one", "2two", "2three"],
+	   ["3zero", "3one", "3two", "3three"]
+	  ],
+    ?assert(get_score(1, 1, Score) =:= "1one"),
+    ?assert(get_score(3, 3, Score) =:= "3three"),
+    ?assert(get_score(2, 3, Score) =:= "2three").
+    
+
+levenshtein_distance_test()->
+    ?assert(levenshtein_distance("", "") =:= 0),
+    ?assert(levenshtein_distance("", "a") =:= 1),
+    ?assert(levenshtein_distance("aaapppp", "") =:= 7),
+    ?assert(levenshtein_distance("frog", "fog") =:= 1),
+    ?assert(levenshtein_distance("fly", "ant") =:= 3),
+    ?assert(levenshtein_distance("hippo", "elephant") =:= 7).
+    
+    
+    
+
+
 
 -endif.
 
